@@ -1,7 +1,7 @@
 export default function handler(req, res) {
   const { email, password } = JSON.parse(req.body);
 
-  if (email === "admin@gmail.com" && password === "123456") {
+  if (email === "vishnu@gmail.com" && password === "vishnu@54355api") {
     return res.json({ success: true });
   }
 
