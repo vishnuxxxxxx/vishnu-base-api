@@ -52,7 +52,7 @@ export default async function handler(req, res) {
       .single();
 
     if (!data || error) {
-      return res.status(403).json({ error: "Invalid API Key" });
+      return res.status(403).json({ error: "key closed contact owner vishnu" });
     }
 
     // 🚨 2. CUSTOM MESSAGE / BLOCK CHECK (വിഷ്ണു, ഈ ഭാഗമാണ് പ്രധാനം)
