@@ -44,7 +44,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Missing params" });
     }
 
-    // 🔐 CHECK API KEY & CUSTOM MESSAGE
+    // 🔐 CHECK API KEY
     const { data, error } = await supabase
       .from("api_keys")
       .select("*")
@@ -55,13 +55,13 @@ export default async function handler(req, res) {
       return res.status(403).json({ error: "Invalid key" });
     }
 
-    // --- 🚨 NEW FEATURE: CUSTOM MESSAGE CHECK ---
-    // ഡാറ്റാബേസിൽ custom_message ഉണ്ടെങ്കിൽ അത് ഉടനെ റിട്ടേൺ ചെയ്യും.
-    if (data.custom_message) {
-      return res.status(200).json({ 
+    // --- 🚨 CUSTOM MESSAGE CHECK (ഇവിടെയാണ് മാറ്റം) ---
+    // ഡാറ്റാബേസിൽ custom_message ഉണ്ടെങ്കിൽ അത് ഉടനെ കാണിക്കും
+    if (data.custom_message && data.custom_message.trim() !== "") {
+      return res.json({ 
         status: "blocked",
-        message: data.custom_message,
-        contact: "Owner" 
+        custom: true,
+        message: data.custom_message 
       });
     }
 
@@ -88,7 +88,7 @@ export default async function handler(req, res) {
       })
       .eq("key", key);
 
-    // 🔍 SEARCH (If not blocked)
+    // 🔍 SEARCH
     const index = await getIndex();
     const prefix = userid.slice(0, 4);
     const files = index[prefix];
@@ -112,3 +112,4 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "Server error" });
   }
 }
+
