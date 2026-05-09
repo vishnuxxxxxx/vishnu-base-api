@@ -8,16 +8,12 @@ async function getIndex() {
     const res = await fetch(
       "https://cdn.jsdelivr.net/gh/harshsingh9817/Osint-api@main/index.json"
     );
-
     const text = await res.text();
-
     if (!text.startsWith("{")) {
       throw new Error("Index not valid JSON");
     }
-
     indexCache = JSON.parse(text);
   }
-
   return indexCache;
 }
 
@@ -25,35 +21,18 @@ async function loadChunk(file) {
   if (!fileCache[file]) {
     const res = await fetch(
       `https://raw.githubusercontent.com/vishnuxxxxxx/vishnu-Osint-api/main/chunks/${file}`,
-      {
-        headers: { "User-Agent": "Mozilla/5.0" }
-      }
+      { headers: { "User-Agent": "Mozilla/5.0" } }
     );
-
-    if (!res.ok) {
-      console.log("Failed to fetch:", file);
-      return null;
-    }
-
+    if (!res.ok) return null;
     const text = await res.text();
-
-    // 🚨 prevent crash if not JSON
-    if (!text.startsWith("[")) {
-      console.log("Invalid chunk:", file);
-      return null;
-    }
-
+    if (!text.startsWith("[")) return null;
     const data = JSON.parse(text);
-
-    // ⚡ convert array → hashmap
     const map = {};
     for (let item of data) {
       map[String(item.mobile)] = item;
     }
-
     fileCache[file] = map;
   }
-
   return fileCache[file];
 }
 
@@ -65,8 +44,8 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Missing params" });
     }
 
-    // 🔐 CHECK API KEY
-    const { data } = await supabase
+    // 🔐 CHECK API KEY & CUSTOM MESSAGE
+    const { data, error } = await supabase
       .from("api_keys")
       .select("*")
       .eq("key", key)
@@ -74,6 +53,16 @@ export default async function handler(req, res) {
 
     if (!data) {
       return res.status(403).json({ error: "Invalid key" });
+    }
+
+    // --- 🚨 NEW FEATURE: CUSTOM MESSAGE CHECK ---
+    // ഡാറ്റാബേസിൽ custom_message ഉണ്ടെങ്കിൽ അത് ഉടനെ റിട്ടേൺ ചെയ്യും.
+    if (data.custom_message) {
+      return res.status(200).json({ 
+        status: "blocked",
+        message: data.custom_message,
+        contact: "Owner" 
+      });
     }
 
     if (data.expiry && new Date() > new Date(data.expiry)) {
@@ -99,11 +88,9 @@ export default async function handler(req, res) {
       })
       .eq("key", key);
 
-    // 🔍 SEARCH
+    // 🔍 SEARCH (If not blocked)
     const index = await getIndex();
-
-    const prefix = userid.slice(0, 4); // MUST match your index
-
+    const prefix = userid.slice(0, 4);
     const files = index[prefix];
 
     if (!files) {
@@ -112,9 +99,7 @@ export default async function handler(req, res) {
 
     for (let file of files) {
       const chunk = await loadChunk(file);
-
       if (!chunk) continue;
-
       if (chunk[userid]) {
         return res.json(chunk[userid]);
       }
