@@ -11,7 +11,6 @@ export default function Home() {
   const [lifetime, setLifetime] = useState(false);
   const [keys, setKeys] = useState([]);
 
-  // Login Function logic
   const login = async () => {
     const res = await fetch("/api/login", {
       method: "POST",
@@ -22,7 +21,6 @@ export default function Home() {
     else alert("Login failed");
   };
 
-  // Key Generation logic
   const createKey = async () => {
     await fetch("/api/create-key", {
       method: "POST",
@@ -45,7 +43,6 @@ export default function Home() {
     loadKeys();
   };
 
-  // Login UI Component
   if (!logged) {
     return (
       <div style={styles.terminalContainer}>
@@ -73,11 +70,11 @@ export default function Home() {
             <button style={styles.hackerButton} onClick={login}>INITIATE_LOGIN</button>
           </div>
         </div>
+        <style>{globalStyles}</style>
       </div>
     );
   }
 
-  // Dashboard UI Component
   return (
     <div style={styles.dashboardContainer}>
       <div style={styles.scanline}></div>
@@ -111,27 +108,31 @@ export default function Home() {
           </div>
         ))}
       </div>
-
-      {/* Adding required animations to the global style */}
-      <style>{`
-        @keyframes blink {
-          0% { opacity: 1; }
-          50% { opacity: 0; }
-          100% { opacity: 1; }
-        }
-        @keyframes scan {
-          from { top: 0; }
-          to { top: 100%; }
-        }
-        body {
-          margin: 0;
-          padding: 0;
-          background: #000;
-        }
-      `}</style>
+      <style>{globalStyles}</style>
     </div>
   );
 }
+
+const globalStyles = `
+  @keyframes blink {
+    0% { opacity: 1; }
+    50% { opacity: 0; }
+    100% { opacity: 1; }
+  }
+  @keyframes scan {
+    from { transform: translateY(0); }
+    to { transform: translateY(100vh); }
+  }
+  body, html {
+    margin: 0 !important;
+    padding: 0 !important;
+    background-color: #000 !important;
+    overflow-x: hidden;
+  }
+  * {
+    box-sizing: border-box;
+  }
+`;
 
 const styles = {
   terminalContainer: {
@@ -139,32 +140,32 @@ const styles = {
     justifyContent: "center",
     alignItems: "center",
     height: "100vh",
+    width: "100vw",
     background: "#000",
-    fontFamily: "'Courier New', Courier, monospace",
-    overflow: "hidden",
-    position: "relative"
+    fontFamily: "'Courier New', monospace",
+    position: "fixed",
+    top: 0,
+    left: 0
   },
   scanline: {
     width: "100%",
     height: "2px",
-    background: "rgba(0, 255, 65, 0.1)",
+    background: "rgba(0, 255, 65, 0.05)",
     position: "absolute",
     top: 0,
     left: 0,
     zIndex: 10,
     pointerEvents: "none",
-    animation: "scan 4s linear infinite"
+    animation: "scan 6s linear infinite"
   },
   loginBox: {
-    background: "rgba(0, 15, 0, 0.95)",
+    background: "rgba(0, 5, 0, 0.98)",
     padding: "40px",
-    borderRadius: "4px",
     border: "1px solid #00ff41",
-    boxShadow: "0 0 30px rgba(0, 255, 65, 0.15)",
-    width: "100%",
-    maxWidth: "420px",
-    zIndex: 5,
-    boxSizing: "border-box"
+    boxShadow: "0 0 40px rgba(0, 255, 65, 0.1)",
+    width: "90%",
+    maxWidth: "400px",
+    zIndex: 20
   },
   header: {
     textAlign: "center",
@@ -172,135 +173,115 @@ const styles = {
   },
   devTitle: {
     color: "#00ff41",
-    fontSize: "1.4rem",
+    fontSize: "1.3rem",
     fontWeight: "bold",
-    textShadow: "0 0 8px #00ff41"
+    textShadow: "0 0 10px #00ff41"
   },
   blink: {
     color: "#00ff41",
-    animation: "blink 1.2s step-end infinite"
+    animation: "blink 1s step-end infinite"
   },
   statusText: {
-    color: "#008f11",
-    fontSize: "0.7rem",
+    color: "#004d00",
+    fontSize: "0.65rem",
     textAlign: "center",
     marginBottom: "30px",
-    letterSpacing: "2px",
-    textTransform: "uppercase"
+    letterSpacing: "3px"
   },
   inputGroup: {
     display: "flex",
-    flexDirection: "column",
-    gap: "5px"
+    flexDirection: "column"
   },
   hackerInput: {
     width: "100%",
-    padding: "14px",
+    padding: "12px",
     marginBottom: "15px",
-    background: "#050505",
+    background: "#000",
     border: "1px solid #004d00",
     color: "#00ff41",
     outline: "none",
-    boxSizing: "border-box",
     fontSize: "0.9rem",
     fontFamily: "'Courier New', monospace"
   },
   hackerButton: {
     width: "100%",
-    padding: "14px",
+    padding: "12px",
     background: "#00ff41",
     color: "#000",
     border: "none",
-    fontWeight: "900",
+    fontWeight: "bold",
     cursor: "pointer",
-    boxShadow: "0 0 15px rgba(0, 255, 65, 0.4)",
-    transition: "0.2s",
     textTransform: "uppercase"
   },
   dashboardContainer: {
     padding: "40px",
     minHeight: "100vh",
+    width: "100%",
     background: "#000",
     color: "#00ff41",
-    fontFamily: "'Courier New', monospace",
-    position: "relative",
-    boxSizing: "border-box"
+    fontFamily: "'Courier New', monospace"
   },
   dashTitle: {
-    borderBottom: "1px solid #00ff41",
-    paddingBottom: "10px",
-    marginBottom: "30px",
-    fontSize: "1.2rem",
-    letterSpacing: "1px"
+    borderBottom: "1px solid #004d00",
+    paddingBottom: "15px",
+    marginBottom: "40px",
+    fontSize: "1.1rem"
   },
   controlPanel: {
-    background: "rgba(0, 20, 0, 0.5)",
-    padding: "25px",
-    border: "1px solid #004d00",
-    marginBottom: "30px",
-    borderRadius: "4px"
+    background: "#050505",
+    padding: "20px",
+    border: "1px solid #002200",
+    marginBottom: "30px"
   },
   checkboxLabel: {
     display: "flex",
     alignItems: "center",
     marginBottom: "20px",
-    fontSize: "0.8rem",
-    cursor: "pointer"
+    fontSize: "0.8rem"
   },
   refreshBtn: {
     background: "transparent",
-    border: "1px solid #00ff41",
-    color: "#00ff41",
-    padding: "10px 25px",
+    border: "1px solid #004d00",
+    color: "#008f11",
+    padding: "8px 15px",
     cursor: "pointer",
-    marginBottom: "25px",
-    fontSize: "0.8rem",
-    fontWeight: "bold"
+    marginBottom: "20px"
   },
   keyGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
-    gap: "25px"
+    gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+    gap: "20px"
   },
   dataNode: {
-    border: "1px solid #004d00",
-    padding: "20px",
-    background: "linear-gradient(135deg, #001000 0%, #000 100%)",
-    borderRadius: "4px"
+    border: "1px solid #002200",
+    padding: "15px",
+    background: "#030303"
   },
   nodeHeader: {
-    color: "#00ff41",
-    fontSize: "0.75rem",
-    marginBottom: "12px",
-    opacity: 0.8,
-    borderBottom: "1px solid #002200",
-    paddingBottom: "5px"
+    fontSize: "0.7rem",
+    color: "#004d00",
+    marginBottom: "10px"
   },
   keyCode: {
     display: "block",
     background: "#000",
-    padding: "12px",
-    border: "1px solid #004d00",
-    marginBottom: "15px",
-    fontSize: "0.85rem",
-    color: "#00ff41",
-    wordBreak: "break-all"
+    padding: "8px",
+    border: "1px dashed #004d00",
+    fontSize: "0.8rem",
+    marginBottom: "10px"
   },
   nodeMeta: {
-    fontSize: "0.8rem",
-    color: "#008f11",
-    lineHeight: "1.6"
+    fontSize: "0.75rem",
+    opacity: 0.7
   },
   deleteBtn: {
-    marginTop: "15px",
+    marginTop: "10px",
     background: "transparent",
-    border: "1px solid #ff4444",
-    color: "#ff4444",
-    padding: "6px 15px",
+    border: "1px solid #440000",
+    color: "#880000",
+    padding: "5px 10px",
     cursor: "pointer",
-    fontSize: "0.7rem",
-    textTransform: "uppercase",
-    transition: "0.3s"
+    fontSize: "0.7rem"
   }
 };
     
