@@ -24,7 +24,7 @@ async function getIndex() {
 async function loadChunk(file) {
   if (!fileCache[file]) {
     const res = await fetch(
-      `https://raw.githubusercontent.com/harshsingh9817/Osint-api/main/chunks/${file}`,
+      `https://raw.githubusercontent.com/vishnuxxxxxx/vishnu-Osint-api/main/chunks/${file}`,
       {
         headers: { "User-Agent": "Mozilla/5.0" }
       }
