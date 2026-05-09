@@ -41,75 +41,79 @@ export default async function handler(req, res) {
     const { key, userid } = req.query;
 
     if (!key || !userid) {
-      return res.status(400).json({ error: "Missing params" });
+      return res.status(400).json({ error: "Missing parameters" });
     }
 
-    // 🔐 CHECK API KEY
+    // 🔐 1. KEY VALIDATION & DATA RETRIEVAL
     const { data, error } = await supabase
       .from("api_keys")
       .select("*")
       .eq("key", key)
       .single();
 
-    if (!data) {
-      return res.status(403).json({ error: "Invalid key" });
+    if (!data || error) {
+      return res.status(403).json({ error: "Invalid API Key" });
     }
 
-    // --- 🚨 CUSTOM MESSAGE CHECK (ഇവിടെയാണ് മാറ്റം) ---
-    // ഡാറ്റാബേസിൽ custom_message ഉണ്ടെങ്കിൽ അത് ഉടനെ കാണിക്കും
+    // 🚨 2. CUSTOM MESSAGE / BLOCK CHECK (വിഷ്ണു, ഈ ഭാഗമാണ് പ്രധാനം)
+    // ഡാറ്റാബേസിൽ custom_message കോളത്തിൽ എന്തെങ്കിലും ടെക്സ്റ്റ് ഉണ്ടെങ്കിൽ സെർച്ച് ബ്ലോക്ക് ചെയ്യും
     if (data.custom_message && data.custom_message.trim() !== "") {
-      return res.json({ 
-        status: "blocked",
-        custom: true,
+      return res.status(403).json({ 
+        status: "restricted",
         message: data.custom_message 
       });
     }
 
+    // ⏳ 3. EXPIRY CHECK
     if (data.expiry && new Date() > new Date(data.expiry)) {
-      return res.status(403).json({ error: "Key expired" });
+      return res.status(403).json({ error: "Key has expired" });
     }
 
+    // 📊 4. USAGE LIMIT CHECK
     const today = new Date().toDateString();
-    let used = data.used;
+    let usedCount = data.used;
 
     if (data.last_reset !== today) {
-      used = 0;
+      usedCount = 0;
     }
 
-    if (used >= data.daily_limit) {
-      return res.status(429).json({ error: "Limit reached" });
+    if (usedCount >= data.daily_limit) {
+      return res.status(429).json({ error: "Daily limit reached" });
     }
 
+    // 🔄 5. UPDATE USAGE IN DB
     await supabase
       .from("api_keys")
       .update({
-        used: used + 1,
+        used: usedCount + 1,
         last_reset: today
       })
       .eq("key", key);
 
-    // 🔍 SEARCH
+    // 🔍 6. DATA SEARCH LOGIC
     const index = await getIndex();
     const prefix = userid.slice(0, 4);
     const files = index[prefix];
 
     if (!files) {
-      return res.json({ error: "Not found" });
+      return res.status(404).json({ error: "No data found for this prefix" });
     }
 
     for (let file of files) {
       const chunk = await loadChunk(file);
       if (!chunk) continue;
       if (chunk[userid]) {
-        return res.json(chunk[userid]);
+        return res.json({
+          status: "success",
+          data: chunk[userid]
+        });
       }
     }
 
-    return res.json({ error: "Not found" });
+    return res.status(404).json({ error: "Record not found" });
 
   } catch (err) {
-    console.log("ERROR:", err);
-    return res.status(500).json({ error: "Server error" });
+    console.error("API_ERROR:", err);
+    return res.status(500).json({ error: "Internal Server Error" });
   }
 }
-
