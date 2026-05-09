@@ -4,7 +4,7 @@ export default function Home() {
   const [logged, setLogged] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [loginError, setLoginError] = useState(false); // New state for login error
+  const [loginError, setLoginError] = useState(false);
 
   const [name, setName] = useState("");
   const [days, setDays] = useState(1);
@@ -12,10 +12,19 @@ export default function Home() {
   const [lifetime, setLifetime] = useState(false);
   
   const [keys, setKeys] = useState([]);
-  const [showKeys, setShowKeys] = useState(false); // New state for Show/Hide keys
-  const [showModal, setShowModal] = useState(false); // Custom Message Modal state
+  const [showKeys, setShowKeys] = useState(false);
+  const [showModal, setShowModal] = useState(false);
   const [activeKey, setActiveKey] = useState(null);
   const [customMsg, setCustomMsg] = useState("");
+
+  // --- FIX: Refresh Problem Fix (Check Session on Load) ---
+  useEffect(() => {
+    const isAuth = localStorage.getItem("isLoggedIn");
+    if (isAuth === "true") {
+      setLogged(true);
+      loadKeys(); // ലോഗിൻ ആണെങ്കിൽ കീസ് ലോഡ് ചെയ്യുക
+    }
+  }, []);
 
   const login = async () => {
     setLoginError(false);
@@ -24,8 +33,19 @@ export default function Home() {
       body: JSON.stringify({ email, password })
     });
 
-    if (res.ok) setLogged(true);
-    else setLoginError(true); // Show red error text instead of alert
+    if (res.ok) {
+      localStorage.setItem("isLoggedIn", "true"); // Session സേവ് ചെയ്യുന്നു
+      setLogged(true);
+      loadKeys();
+    } else {
+      setLoginError(true);
+    }
+  };
+
+  // --- Logout Function ---
+  const handleLogout = () => {
+    localStorage.removeItem("isLoggedIn");
+    setLogged(false);
   };
 
   const createKey = async () => {
@@ -40,7 +60,7 @@ export default function Home() {
     const res = await fetch("/api/get-keys");
     const data = await res.json();
     setKeys(data);
-    setShowKeys(true); // Automatically show when synced
+    setShowKeys(true);
   };
 
   const deleteKey = async (keyToDelete) => {
@@ -49,7 +69,6 @@ export default function Home() {
       body: JSON.stringify({ key: keyToDelete })
     });
     if(res.ok) {
-        // filter out only the deleted key from state
         setKeys(keys.filter(k => k.key !== keyToDelete));
     }
   };
@@ -105,7 +124,12 @@ export default function Home() {
   return (
     <div style={styles.dashboardContainer}>
       <div style={styles.scanline}></div>
-      <h2 style={styles.dashTitle}>// DATABASE_DASHBOARD</h2>
+      
+      {/* --- Logout Section (Top Right) --- */}
+      <div style={styles.topBar}>
+        <h2 style={styles.dashTitle}>// DATABASE_DASHBOARD</h2>
+        <button style={styles.logoutBtn} onClick={handleLogout}>TERMINATE_SESSION (LOGOUT)</button>
+      </div>
 
       <div style={styles.controlPanel}>
         <input style={styles.hackerInput} placeholder="PROJECT_NAME" onChange={e=>setName(e.target.value)} />
@@ -136,7 +160,7 @@ export default function Home() {
                 <p>THRESHOLD: {k.daily_limit}</p>
                 <p>TTL: {k.expiry || "PERSISTENT"}</p>
                 </div>
-                <div style={{display: 'flex', gap: '10px'}}>
+                <div style={{display: 'flex', gap: '10px', marginTop: '10px'}}>
                     <button style={styles.deleteBtn} onClick={()=>deleteKey(k.key)}>TERMINATE</button>
                     <button style={styles.customBtn} onClick={()=>openCustomMessageModal(k.key)}>CUSTOM_MSG</button>
                 </div>
@@ -168,28 +192,13 @@ export default function Home() {
 }
 
 const globalStyles = `
-  @keyframes blink {
-    0% { opacity: 1; }
-    50% { opacity: 0; }
-    100% { opacity: 1; }
-  }
-  @keyframes scan {
-    from { transform: translateY(0); }
-    to { transform: translateY(100vh); }
-  }
-  body, html {
-    margin: 0 !important;
-    padding: 0 !important;
-    background-color: #000 !important;
-    overflow-x: hidden;
-  }
-  * {
-    box-sizing: border-box;
-  }
+  @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0; } 100% { opacity: 1; } }
+  @keyframes scan { from { transform: translateY(0); } to { transform: translateY(100vh); } }
+  body, html { margin: 0; padding: 0; background-color: #000; overflow-x: hidden; }
+  * { box-sizing: border-box; }
 `;
 
 const styles = {
-  // ... (keeping your original styles here)
   terminalContainer: { display: "flex", justifyContent: "center", alignItems: "center", height: "100vh", width: "100vw", background: "#000", fontFamily: "'Courier New', monospace", position: "fixed", top: 0, left: 0 },
   scanline: { width: "100%", height: "2px", background: "rgba(0, 255, 65, 0.05)", position: "absolute", top: 0, left: 0, zIndex: 10, pointerEvents: "none", animation: "scan 6s linear infinite" },
   loginBox: { background: "rgba(0, 5, 0, 0.98)", padding: "40px", border: "1px solid #00ff41", boxShadow: "0 0 40px rgba(0, 255, 65, 0.1)", width: "90%", maxWidth: "400px", zIndex: 20 },
@@ -200,8 +209,12 @@ const styles = {
   inputGroup: { display: "flex", flexDirection: "column" },
   hackerInput: { width: "100%", padding: "12px", marginBottom: "15px", background: "#000", border: "1px solid #004d00", color: "#00ff41", outline: "none", fontSize: "0.9rem", fontFamily: "'Courier New', monospace" },
   hackerButton: { width: "100%", padding: "12px", background: "#00ff41", color: "#000", border: "none", fontWeight: "bold", cursor: "pointer", textTransform: "uppercase" },
+  
   dashboardContainer: { padding: "40px", minHeight: "100vh", width: "100%", background: "#000", color: "#00ff41", fontFamily: "'Courier New', monospace" },
-  dashTitle: { borderBottom: "1px solid #004d00", paddingBottom: "15px", marginBottom: "40px", fontSize: "1.1rem" },
+  topBar: { display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #004d00", marginBottom: "40px" },
+  dashTitle: { paddingBottom: "15px", fontSize: "1.1rem", margin: 0 },
+  logoutBtn: { background: "transparent", border: "1px solid #ff0000", color: "#ff0000", padding: "8px 15px", cursor: "pointer", fontSize: "0.7rem", marginBottom: "15px" },
+  
   controlPanel: { background: "#050505", padding: "20px", border: "1px solid #002200", marginBottom: "30px" },
   checkboxLabel: { display: "flex", alignItems: "center", marginBottom: "20px", fontSize: "0.8rem" },
   refreshBtn: { background: "transparent", border: "1px solid #004d00", color: "#008f11", padding: "8px 15px", cursor: "pointer", marginBottom: "20px" },
@@ -210,8 +223,8 @@ const styles = {
   nodeHeader: { fontSize: "0.7rem", color: "#004d00", marginBottom: "10px" },
   keyCode: { display: "block", background: "#000", padding: "8px", border: "1px dashed #004d00", fontSize: "0.8rem", marginBottom: "10px" },
   nodeMeta: { fontSize: "0.75rem", opacity: 0.7 },
-  deleteBtn: { marginTop: "10px", background: "transparent", border: "1px solid #440000", color: "#880000", padding: "5px 10px", cursor: "pointer", fontSize: "0.7rem" },
-  customBtn: { marginTop: "10px", background: "transparent", border: "1px solid #00ff41", color: "#00ff41", padding: "5px 10px", cursor: "pointer", fontSize: "0.7rem" },
+  deleteBtn: { background: "transparent", border: "1px solid #440000", color: "#880000", padding: "5px 10px", cursor: "pointer", fontSize: "0.7rem" },
+  customBtn: { background: "transparent", border: "1px solid #00ff41", color: "#00ff41", padding: "5px 10px", cursor: "pointer", fontSize: "0.7rem" },
   modalOverlay: { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 100 }
 };
-    
+        
