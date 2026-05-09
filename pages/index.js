@@ -17,12 +17,11 @@ export default function Home() {
   const [activeKey, setActiveKey] = useState(null);
   const [customMsg, setCustomMsg] = useState("");
 
-  // --- FIX: Refresh Problem Fix (Check Session on Load) ---
   useEffect(() => {
     const isAuth = localStorage.getItem("isLoggedIn");
     if (isAuth === "true") {
       setLogged(true);
-      loadKeys(); // ലോഗിൻ ആണെങ്കിൽ കീസ് ലോഡ് ചെയ്യുക
+      loadKeys();
     }
   }, []);
 
@@ -34,7 +33,7 @@ export default function Home() {
     });
 
     if (res.ok) {
-      localStorage.setItem("isLoggedIn", "true"); // Session സേവ് ചെയ്യുന്നു
+      localStorage.setItem("isLoggedIn", "true");
       setLogged(true);
       loadKeys();
     } else {
@@ -42,7 +41,6 @@ export default function Home() {
     }
   };
 
-  // --- Logout Function ---
   const handleLogout = () => {
     localStorage.removeItem("isLoggedIn");
     setLogged(false);
@@ -73,19 +71,27 @@ export default function Home() {
     }
   };
 
-  const openCustomMessageModal = (key) => {
+  const openCustomMessageModal = (key, currentMsg) => {
     setActiveKey(key);
+    setCustomMsg(currentMsg || ""); // നിലവിലുള്ള മെസ്സേജ് ഉണ്ടെങ്കിൽ അത് കാണിക്കാൻ
     setShowModal(true);
   };
 
   const saveCustomMessage = async () => {
-    await fetch("/api/set-custom-message", {
+    // API വഴി ഡാറ്റാബേസിലേക്ക് മെസ്സേജ് അയക്കുന്നു
+    const res = await fetch("/api/set-custom-message", {
       method: "POST",
-      body: JSON.stringify({ key: activeKey, message: customMsg, status: "stopped" })
+      body: JSON.stringify({ 
+        key: activeKey, 
+        message: customMsg 
+      })
     });
-    setShowModal(false);
-    setCustomMsg("");
-    loadKeys();
+    
+    if(res.ok) {
+      setShowModal(false);
+      setCustomMsg("");
+      loadKeys(); // ലിസ്റ്റ് റിഫ്രഷ് ചെയ്യുന്നു
+    }
   };
 
   if (!logged) {
@@ -125,10 +131,10 @@ export default function Home() {
     <div style={styles.dashboardContainer}>
       <div style={styles.scanline}></div>
       
-      {/* --- Logout Section (Top Right) --- */}
+      {/* --- Updated Top Bar with Compact Logout --- */}
       <div style={styles.topBar}>
         <h2 style={styles.dashTitle}>// DATABASE_DASHBOARD</h2>
-        <button style={styles.logoutBtn} onClick={handleLogout}>TERMINATE_SESSION (LOGOUT)</button>
+        <button style={styles.logoutBtn} onClick={handleLogout}>[X] LOGOUT</button>
       </div>
 
       <div style={styles.controlPanel}>
@@ -144,10 +150,12 @@ export default function Home() {
         <button style={styles.hackerButton} onClick={createKey}>GENERATE_KEY</button>
       </div>
 
-      <button style={styles.refreshBtn} onClick={() => setShowKeys(!showKeys)}>
-        {showKeys ? "HIDE_DATABASE_NODES" : "SHOW_DATABASE_NODES"}
-      </button>
-      <button style={{...styles.refreshBtn, marginLeft: '10px'}} onClick={loadKeys}>SYNC_DATABASE</button>
+      <div style={{marginBottom: '20px'}}>
+        <button style={styles.refreshBtn} onClick={() => setShowKeys(!showKeys)}>
+          {showKeys ? "HIDE_NODES" : "SHOW_NODES"}
+        </button>
+        <button style={{...styles.refreshBtn, marginLeft: '10px'}} onClick={loadKeys}>SYNC_DB</button>
+      </div>
 
       {showKeys && (
         <div style={styles.keyGrid}>
@@ -155,14 +163,21 @@ export default function Home() {
             <div key={k.key} style={styles.dataNode}>
                 <div style={styles.nodeHeader}>NODE: {k.name}</div>
                 <code style={styles.keyCode}>{k.key}</code>
-                {k.custom_message && <div style={{color: '#ffcc00', fontSize: '10px', marginBottom: '5px'}}>BLOCK_MSG: {k.custom_message}</div>}
+                
+                {/* Custom Message Status Display */}
+                {k.custom_message ? (
+                  <div style={styles.msgAlert}>STATUS: BLOCKED | "{k.custom_message}"</div>
+                ) : (
+                  <div style={{color: '#004d00', fontSize: '10px', marginBottom: '5px'}}>STATUS: ACTIVE (NO_RESTRICTIONS)</div>
+                )}
+
                 <div style={styles.nodeMeta}>
-                <p>THRESHOLD: {k.daily_limit}</p>
-                <p>TTL: {k.expiry || "PERSISTENT"}</p>
+                  <p>LIMIT: {k.used}/{k.daily_limit}</p>
+                  <p>EXP: {k.expiry || "LIFE"}</p>
                 </div>
                 <div style={{display: 'flex', gap: '10px', marginTop: '10px'}}>
-                    <button style={styles.deleteBtn} onClick={()=>deleteKey(k.key)}>TERMINATE</button>
-                    <button style={styles.customBtn} onClick={()=>openCustomMessageModal(k.key)}>CUSTOM_MSG</button>
+                    <button style={styles.deleteBtn} onClick={()=>deleteKey(k.key)}>DELETE</button>
+                    <button style={styles.customBtn} onClick={()=>openCustomMessageModal(k.key, k.custom_message)}>SET_MSG</button>
                 </div>
             </div>
             ))}
@@ -173,15 +188,16 @@ export default function Home() {
       {showModal && (
           <div style={styles.modalOverlay}>
               <div style={styles.loginBox}>
-                  <h3 style={{color: '#00ff41', marginBottom: '15px'}}>SET_RESTRICTION_MESSAGE</h3>
+                  <h3 style={{color: '#00ff41', marginBottom: '15px', fontSize: '0.9rem'}}>SET_RESTRICTION_MESSAGE</h3>
                   <textarea 
-                    style={{...styles.hackerInput, height: '80px'}} 
-                    placeholder="Enter message (e.g. Please contact owner)"
+                    style={{...styles.hackerInput, height: '80px', fontSize: '0.8rem'}} 
+                    placeholder="Enter message to show when API is stopped..."
                     value={customMsg}
                     onChange={(e) => setCustomMsg(e.target.value)}
                   />
-                  <button style={styles.hackerButton} onClick={saveCustomMessage}>STOP_API_WITH_MSG</button>
-                  <button style={{...styles.deleteBtn, width: '100%', marginTop: '10px'}} onClick={()=>setShowModal(false)}>CANCEL</button>
+                  <p style={{fontSize: '10px', color: '#555', marginBottom: '10px'}}>* Leave empty and save to UNBLOCK API.</p>
+                  <button style={styles.hackerButton} onClick={saveCustomMessage}>UPDATE_RESTRICTION</button>
+                  <button style={{...styles.deleteBtn, width: '100%', marginTop: '10px'}} onClick={()=>setShowModal(false)}>CLOSE</button>
               </div>
           </div>
       )}
@@ -199,32 +215,34 @@ const globalStyles = `
 `;
 
 const styles = {
+  // ... (മുൻപത്തെ styles നിലനിർത്തുന്നു, താഴെ പറയുന്നവ അപ്ഡേറ്റ് ചെയ്തു)
   terminalContainer: { display: "flex", justifyContent: "center", alignItems: "center", height: "100vh", width: "100vw", background: "#000", fontFamily: "'Courier New', monospace", position: "fixed", top: 0, left: 0 },
   scanline: { width: "100%", height: "2px", background: "rgba(0, 255, 65, 0.05)", position: "absolute", top: 0, left: 0, zIndex: 10, pointerEvents: "none", animation: "scan 6s linear infinite" },
-  loginBox: { background: "rgba(0, 5, 0, 0.98)", padding: "40px", border: "1px solid #00ff41", boxShadow: "0 0 40px rgba(0, 255, 65, 0.1)", width: "90%", maxWidth: "400px", zIndex: 20 },
+  loginBox: { background: "rgba(0, 5, 0, 0.98)", padding: "30px", border: "1px solid #00ff41", boxShadow: "0 0 40px rgba(0, 255, 65, 0.1)", width: "90%", maxWidth: "380px", zIndex: 20 },
   header: { textAlign: "center", marginBottom: "10px" },
-  devTitle: { color: "#00ff41", fontSize: "1.3rem", fontWeight: "bold", textShadow: "0 0 10px #00ff41" },
+  devTitle: { color: "#00ff41", fontSize: "1.1rem", fontWeight: "bold", textShadow: "0 0 10px #00ff41" },
   blink: { color: "#00ff41", animation: "blink 1s step-end infinite" },
-  statusText: { color: "#004d00", fontSize: "0.65rem", textAlign: "center", marginBottom: "30px", letterSpacing: "3px" },
+  statusText: { color: "#004d00", fontSize: "0.6rem", textAlign: "center", marginBottom: "20px", letterSpacing: "2px" },
   inputGroup: { display: "flex", flexDirection: "column" },
-  hackerInput: { width: "100%", padding: "12px", marginBottom: "15px", background: "#000", border: "1px solid #004d00", color: "#00ff41", outline: "none", fontSize: "0.9rem", fontFamily: "'Courier New', monospace" },
-  hackerButton: { width: "100%", padding: "12px", background: "#00ff41", color: "#000", border: "none", fontWeight: "bold", cursor: "pointer", textTransform: "uppercase" },
+  hackerInput: { width: "100%", padding: "10px", marginBottom: "12px", background: "#000", border: "1px solid #004d00", color: "#00ff41", outline: "none", fontSize: "0.85rem", fontFamily: "'Courier New', monospace" },
+  hackerButton: { width: "100%", padding: "10px", background: "#00ff41", color: "#000", border: "none", fontWeight: "bold", cursor: "pointer", fontSize: "0.8rem" },
   
-  dashboardContainer: { padding: "40px", minHeight: "100vh", width: "100%", background: "#000", color: "#00ff41", fontFamily: "'Courier New', monospace" },
-  topBar: { display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #004d00", marginBottom: "40px" },
-  dashTitle: { paddingBottom: "15px", fontSize: "1.1rem", margin: 0 },
-  logoutBtn: { background: "transparent", border: "1px solid #ff0000", color: "#ff0000", padding: "8px 15px", cursor: "pointer", fontSize: "0.7rem", marginBottom: "15px" },
+  dashboardContainer: { padding: "20px", minHeight: "100vh", width: "100%", background: "#000", color: "#00ff41", fontFamily: "'Courier New', monospace" },
+  topBar: { display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #002200", marginBottom: "30px", paddingBottom: "10px" },
+  dashTitle: { fontSize: "0.9rem", margin: 0, color: "#00ff41" },
+  logoutBtn: { background: "transparent", border: "1px solid #ff0000", color: "#ff0000", padding: "4px 10px", cursor: "pointer", fontSize: "0.65rem", transition: "0.3s" },
   
-  controlPanel: { background: "#050505", padding: "20px", border: "1px solid #002200", marginBottom: "30px" },
-  checkboxLabel: { display: "flex", alignItems: "center", marginBottom: "20px", fontSize: "0.8rem" },
-  refreshBtn: { background: "transparent", border: "1px solid #004d00", color: "#008f11", padding: "8px 15px", cursor: "pointer", marginBottom: "20px" },
-  keyGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "20px" },
-  dataNode: { border: "1px solid #002200", padding: "15px", background: "#030303" },
-  nodeHeader: { fontSize: "0.7rem", color: "#004d00", marginBottom: "10px" },
-  keyCode: { display: "block", background: "#000", padding: "8px", border: "1px dashed #004d00", fontSize: "0.8rem", marginBottom: "10px" },
-  nodeMeta: { fontSize: "0.75rem", opacity: 0.7 },
-  deleteBtn: { background: "transparent", border: "1px solid #440000", color: "#880000", padding: "5px 10px", cursor: "pointer", fontSize: "0.7rem" },
-  customBtn: { background: "transparent", border: "1px solid #00ff41", color: "#00ff41", padding: "5px 10px", cursor: "pointer", fontSize: "0.7rem" },
-  modalOverlay: { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 100 }
+  controlPanel: { background: "#050505", padding: "15px", border: "1px solid #002200", marginBottom: "20px" },
+  checkboxLabel: { display: "flex", alignItems: "center", marginBottom: "15px", fontSize: "0.75rem" },
+  refreshBtn: { background: "transparent", border: "1px solid #004d00", color: "#008f11", padding: "6px 12px", cursor: "pointer", fontSize: "0.7rem" },
+  keyGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))", gap: "15px" },
+  dataNode: { border: "1px solid #002200", padding: "12px", background: "#030303" },
+  nodeHeader: { fontSize: "0.65rem", color: "#004d00", marginBottom: "8px" },
+  keyCode: { display: "block", background: "#000", padding: "6px", border: "1px dashed #004d00", fontSize: "0.75rem", marginBottom: "8px", overflowX: "auto" },
+  nodeMeta: { fontSize: "0.7rem", opacity: 0.7 },
+  msgAlert: { color: "#ffcc00", fontSize: "9px", marginBottom: "8px", border: "1px solid #332200", padding: "3px" },
+  deleteBtn: { background: "transparent", border: "1px solid #440000", color: "#880000", padding: "4px 8px", cursor: "pointer", fontSize: "0.65rem" },
+  customBtn: { background: "transparent", border: "1px solid #00ff41", color: "#00ff41", padding: "4px 8px", cursor: "pointer", fontSize: "0.65rem" },
+  modalOverlay: { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.9)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 100 }
 };
         
